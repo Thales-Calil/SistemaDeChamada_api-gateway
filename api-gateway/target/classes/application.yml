@@ -1,0 +1,111 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: api-gateway
+  main:
+    web-application-type: reactive
+
+  cloud:
+    gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
+      # Suporte a CORS centralizado no Gateway
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins:
+              - "http://localhost:3000"
+              - "http://localhost:3001"
+              - "http://localhost:3002"
+              - "http://127.0.0.1:3000"
+              - "http://127.0.0.1:3001"
+              - "http://127.0.0.1:3002"
+            allowed-origin-patterns:
+              - "https://*.azurestaticapps.net"
+              - "https://*.azurewebsites.net"
+            allowed-methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowed-headers: "*"
+            allow-credentials: false
+            max-age: 3600
+
+      # Mapeamento de Rotas do Reverse Proxy
+      routes:
+        # Rota 1: Aluno Service (MongoDB Atlas) -> :8081
+        - id: aluno-service-route
+          uri: ${services.aluno.url:http://localhost:8081}
+          predicates:
+            - Path=/api/alunos/**
+          filters:
+            - AddResponseHeader=X-Gateway-Route, aluno-service
+            - AddResponseHeader=X-Gateway-Target-Port, 8081
+
+        # Rota 2: Chamada Service (Azure SQL) -> :8082
+        - id: chamada-service-route
+          uri: ${services.chamada.url:http://localhost:8082}
+          predicates:
+            - Path=/api/chamadas/**, /api/presencas/**
+          filters:
+            - AddResponseHeader=X-Gateway-Route, chamada-service
+            - AddResponseHeader=X-Gateway-Target-Port, 8082
+
+        # Rota 3: Turma Service (Azure SQL) -> :8083
+        - id: turma-service-route
+          uri: ${services.turma.url:http://localhost:8083}
+          predicates:
+            - Path=/api/turmas/**, /api/professores/**, /api/disciplinas/**
+          filters:
+            - AddResponseHeader=X-Gateway-Route, turma-service
+            - AddResponseHeader=X-Gateway-Target-Port, 8083
+
+# URLs base dos microsserviços para consumo interno do BFF
+services:
+  aluno:
+    url: ${ALUNO_SERVICE_URL:http://localhost:8081}
+  chamada:
+    url: ${CHAMADA_SERVICE_URL:http://localhost:8082}
+  turma:
+    url: ${TURMA_SERVICE_URL:http://localhost:8083}
+
+# Documentação OpenAPI / Swagger UI agregada
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: method
+    urls:
+      - name: 1. Aluno Service
+        url: /v3/api-docs/aluno-service
+      - name: 2. Chamada Service
+        url: /v3/api-docs/chamada-service
+      - name: 3. Turma Service
+        url: /v3/api-docs/turma-service
+
+# Endpoints do Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway,metrics
+  endpoint:
+    gateway:
+      enabled: true
+    health:
+      show-details: always
+
+# Configuração de Logs
+logging:
+  level:
+    root: INFO
+    com.sistema: DEBUG
+    org.springframework.cloud.gateway: INFO
+    org.springframework.web.reactive: INFO
