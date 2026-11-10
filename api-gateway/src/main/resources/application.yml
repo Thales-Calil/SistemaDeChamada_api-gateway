@@ -34,7 +34,8 @@ spring:
               - DELETE
               - PATCH
               - OPTIONS
-            allowed-headers: "*"
+            allowed-headers:
+              - "*"
             allow-credentials: false
             max-age: 3600
 
