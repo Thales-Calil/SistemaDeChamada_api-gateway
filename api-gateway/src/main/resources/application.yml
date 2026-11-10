@@ -68,6 +68,28 @@ spring:
             - AddResponseHeader=X-Gateway-Route, turma-service
             - AddResponseHeader=X-Gateway-Target-Port, 8083
 
+        # Rotas proxy OpenAPI / Swagger dos microsserviços
+        - id: aluno-service-api-docs
+          uri: ${services.aluno.url:http://localhost:8081}
+          predicates:
+            - Path=/v3/api-docs/aluno-service
+          filters:
+            - RewritePath=/v3/api-docs/aluno-service, /v3/api-docs
+
+        - id: chamada-service-api-docs
+          uri: ${services.chamada.url:http://localhost:8082}
+          predicates:
+            - Path=/v3/api-docs/chamada-service
+          filters:
+            - RewritePath=/v3/api-docs/chamada-service, /v3/api-docs
+
+        - id: turma-service-api-docs
+          uri: ${services.turma.url:http://localhost:8083}
+          predicates:
+            - Path=/v3/api-docs/turma-service
+          filters:
+            - RewritePath=/v3/api-docs/turma-service, /v3/api-docs
+
 # URLs base dos microsserviços para consumo interno do BFF
 services:
   aluno:
