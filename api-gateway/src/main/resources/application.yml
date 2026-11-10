@@ -11,6 +11,7 @@ spring:
     gateway:
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
+
       # Suporte a CORS centralizado no Gateway
       globalcors:
         cors-configurations:
@@ -25,6 +26,7 @@ spring:
             allowed-origin-patterns:
               - "https://*.azurestaticapps.net"
               - "https://*.azurewebsites.net"
+              - "*"
             allowed-methods:
               - GET
               - POST
@@ -38,11 +40,11 @@ spring:
 
       # Mapeamento de Rotas do Reverse Proxy
       routes:
-        # Rota 1: Aluno Service (MongoDB Atlas) -> :8081
+        # Rota 1: Aluno Service (MongoDB Atlas / Auth) -> :8081
         - id: aluno-service-route
           uri: ${services.aluno.url:http://localhost:8081}
           predicates:
-            - Path=/api/alunos/**
+            - Path=/api/alunos/**, /api/auth/**
           filters:
             - AddResponseHeader=X-Gateway-Route, aluno-service
             - AddResponseHeader=X-Gateway-Target-Port, 8081
