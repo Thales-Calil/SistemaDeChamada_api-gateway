@@ -12,21 +12,25 @@ spring:
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
 
-      # Suporte a CORS centralizado no Gateway
+      # Suporte a CORS centralizado no Gateway (Origens Explícitas)
       globalcors:
         cors-configurations:
           '[/**]':
             allowed-origins:
+              # --- AMBIENTE LOCAL (Host + MFEs) ---
               - "http://localhost:3000"
               - "http://localhost:3001"
               - "http://localhost:3002"
+              - "http://localhost:4000"
+              - "http://localhost:5173"
+              - "http://localhost:5174"
               - "http://127.0.0.1:3000"
               - "http://127.0.0.1:3001"
               - "http://127.0.0.1:3002"
-            allowed-origin-patterns:
-              - "https://*.azurestaticapps.net"
-              - "https://*.azurewebsites.net"
-              - "*"
+              - "http://127.0.0.1:5173"
+              - "http://127.0.0.1:5174"
+              # --- NUVEM (Host Azure Static Web Apps) ---
+              - "https://jolly-wave-02fe61f0f.5.azurestaticapps.net"
             allowed-methods:
               - GET
               - POST
