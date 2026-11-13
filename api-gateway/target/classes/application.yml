@@ -7,26 +7,47 @@ spring:
   main:
     web-application-type: reactive
 
+  # Banco de usuários do Gateway (Azure SQL). Sem valores padrão: a aplicação
+  # não sobe se as variáveis não estiverem configuradas no App Service.
+  datasource:
+    url: ${GATEWAY_DB_URL}
+    username: ${GATEWAY_DB_USER}
+    password: ${GATEWAY_DB_PASSWORD}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    hikari:
+      maximum-pool-size: 5
+      connection-timeout: 10000
+
+  # Flyway cria/atualiza a tabela de usuários a partir de src/main/resources/db/migration
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
   cloud:
     gateway:
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
 
-      # Suporte a CORS centralizado no Gateway
+      # Suporte a CORS centralizado no Gateway (Origens Explícitas)
       globalcors:
         cors-configurations:
           '[/**]':
             allowed-origins:
+              # --- AMBIENTE LOCAL (Host + MFEs) ---
               - "http://localhost:3000"
               - "http://localhost:3001"
               - "http://localhost:3002"
+              - "http://localhost:4000"
+              - "http://localhost:5173"
+              - "http://localhost:5174"
               - "http://127.0.0.1:3000"
               - "http://127.0.0.1:3001"
               - "http://127.0.0.1:3002"
-            allowed-origin-patterns:
-              - "https://*.azurestaticapps.net"
-              - "https://*.azurewebsites.net"
-              - "*"
+              - "http://127.0.0.1:5173"
+              - "http://127.0.0.1:5174"
+              # --- NUVEM (Host Azure Static Web Apps) ---
+              - "https://jolly-wave-02fe61f0f.5.azurestaticapps.net"
             allowed-methods:
               - GET
               - POST
@@ -34,20 +55,20 @@ spring:
               - DELETE
               - PATCH
               - OPTIONS
-            allowed-headers: "*"
+            allowed-headers:
+              - "*"
             allow-credentials: false
             max-age: 3600
 
       # Mapeamento de Rotas do Reverse Proxy
       routes:
-        # Rota 1: Aluno Service (MongoDB Atlas / Auth) -> :8081
+        # Rota 1: Aluno Service (MongoDB Atlas) -> :8081
         - id: aluno-service-route
           uri: ${services.aluno.url:http://localhost:8081}
           predicates:
-            - Path=/api/alunos/**, /api/auth/**
+            - Path=/api/alunos/**
           filters:
             - AddResponseHeader=X-Gateway-Route, aluno-service
-            - AddResponseHeader=X-Gateway-Target-Port, 8081
 
         # Rota 2: Chamada Service (Azure SQL) -> :8082
         - id: chamada-service-route
@@ -56,7 +77,6 @@ spring:
             - Path=/api/chamadas/**, /api/presencas/**
           filters:
             - AddResponseHeader=X-Gateway-Route, chamada-service
-            - AddResponseHeader=X-Gateway-Target-Port, 8082
 
         # Rota 3: Turma Service (Azure SQL) -> :8083
         - id: turma-service-route
@@ -65,7 +85,28 @@ spring:
             - Path=/api/turmas/**, /api/professores/**, /api/disciplinas/**
           filters:
             - AddResponseHeader=X-Gateway-Route, turma-service
-            - AddResponseHeader=X-Gateway-Target-Port, 8083
+
+        # Rotas proxy OpenAPI / Swagger dos microsserviços
+        - id: aluno-service-api-docs
+          uri: ${services.aluno.url:http://localhost:8081}
+          predicates:
+            - Path=/v3/api-docs/aluno-service
+          filters:
+            - RewritePath=/v3/api-docs/aluno-service, /v3/api-docs
+
+        - id: chamada-service-api-docs
+          uri: ${services.chamada.url:http://localhost:8082}
+          predicates:
+            - Path=/v3/api-docs/chamada-service
+          filters:
+            - RewritePath=/v3/api-docs/chamada-service, /v3/api-docs
+
+        - id: turma-service-api-docs
+          uri: ${services.turma.url:http://localhost:8083}
+          predicates:
+            - Path=/v3/api-docs/turma-service
+          filters:
+            - RewritePath=/v3/api-docs/turma-service, /v3/api-docs
 
 # URLs base dos microsserviços para consumo interno do BFF
 services:
@@ -92,22 +133,35 @@ springdoc:
       - name: 3. Turma Service
         url: /v3/api-docs/turma-service
 
-# Endpoints do Actuator
+# Segurança do JWT (1.2): o segredo vem SOMENTE da variável de ambiente JWT_SECRET
+# (mínimo 32 caracteres). Se não estiver definida, a aplicação não inicia.
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION_MS:28800000} # 8 horas
+
+# Usuário administrador criado automaticamente na primeira subida (se não existir nenhum ADMIN)
+app:
+  admin-inicial:
+    username: ${ADMIN_INITIAL_USERNAME:admin}
+    password: ${ADMIN_INITIAL_PASSWORD:}
+
+# Actuator (1.3): apenas o health é exposto. O endpoint "gateway" permitia
+# criar/alterar rotas pela internet e foi desabilitado.
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,gateway,metrics
+        include: health
   endpoint:
     gateway:
-      enabled: true
+      enabled: false
     health:
-      show-details: always
+      show-details: never
 
 # Configuração de Logs
 logging:
   level:
     root: INFO
-    com.sistema: DEBUG
+    com.sistemadechamada_apigateway: INFO
     org.springframework.cloud.gateway: INFO
     org.springframework.web.reactive: INFO

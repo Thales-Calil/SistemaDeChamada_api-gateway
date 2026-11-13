@@ -1,10 +1,10 @@
 package com.sistemadechamada_apigateway.gateway.filter;
 
-
+import com.sistemadechamada_apigateway.gateway.model.Role;
+import com.sistemadechamada_apigateway.gateway.model.Usuario;
 import com.sistemadechamada_apigateway.gateway.security.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -48,7 +48,13 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void deveRetornar403QuandoAlunoTentarCriarTurma() {
-        String tokenAluno = jwtTokenProvider.gerarToken("1", "ALUNO", "aluno_test");
+        Usuario aluno = new Usuario();
+        aluno.setId(1L);
+        aluno.setUsername("aluno_test");
+        aluno.setRole(Role.ALUNO);
+        aluno.setReferenciaId(10L); // Obrigatório para perfis diferentes de ADMIN passarem na validação
+
+        String tokenAluno = jwtTokenProvider.gerarToken(aluno);
         MockServerHttpRequest request = MockServerHttpRequest.post("/api/turmas")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAluno)
                 .build();
@@ -62,7 +68,12 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void deveInjetarHeadersERepassarQuandoAdminCriarTurma() {
-        String tokenAdmin = jwtTokenProvider.gerarToken("999", "ADMIN", "admin_test");
+        Usuario admin = new Usuario();
+        admin.setId(999L);
+        admin.setUsername("admin_test");
+        admin.setRole(Role.ADMIN);
+
+        String tokenAdmin = jwtTokenProvider.gerarToken(admin);
         MockServerHttpRequest request = MockServerHttpRequest.post("/api/turmas")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenAdmin)
                 .build();
