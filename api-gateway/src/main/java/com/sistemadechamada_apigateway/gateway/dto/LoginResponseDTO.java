@@ -8,6 +8,11 @@ import lombok.Data;
 public class LoginResponseDTO {
     private String token;
     private String tokenType;
-    private String userId;
+    /** Validade do token em segundos (o front usa para voltar ao login quando expirar). */
+    private long expiresIn;
+    private Long userId;
+    private String username;
     private String role;
+    /** Id do aluno ou do professor vinculado ao login (nulo para ADMIN). */
+    private Long referenciaId;
 }

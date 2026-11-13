@@ -24,3 +24,6 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+# Java / Maven (build gerado pelo CI, não deve ser versionado)
+target/
+*.class

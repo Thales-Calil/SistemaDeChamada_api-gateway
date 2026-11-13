@@ -20,9 +20,11 @@ jobs:
         with:
           java-version: '17'
           distribution: 'microsoft'
+          cache: 'maven'
 
-      - name: Build with Maven
-        run: mvn clean package -DskipTests
+      # Os testes rodam antes do deploy: se algum falhar, nada vai para o Azure
+      - name: Build and test with Maven
+        run: mvn -B clean verify
         working-directory: api-gateway
 
       - name: Upload artifact for deployment job

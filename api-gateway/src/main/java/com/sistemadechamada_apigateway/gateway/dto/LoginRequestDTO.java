@@ -1,10 +1,18 @@
 package com.sistemadechamada_apigateway.gateway.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class LoginRequestDTO {
-    private String username; // ex: "admin", "professor", "aluno"
+
+    @NotBlank(message = "é obrigatório")
+    private String username;
+
+    @NotBlank(message = "é obrigatória")
     private String password;
-    private String userId;   // Opcional para simulação (ex: "1", "105", "65a1f2b3c4d5e6f7a8b9c0d1")
 }

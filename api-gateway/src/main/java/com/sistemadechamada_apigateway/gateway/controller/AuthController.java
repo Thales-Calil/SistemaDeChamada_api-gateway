@@ -2,9 +2,12 @@ package com.sistemadechamada_apigateway.gateway.controller;
 
 import com.sistemadechamada_apigateway.gateway.dto.LoginRequestDTO;
 import com.sistemadechamada_apigateway.gateway.dto.LoginResponseDTO;
+import com.sistemadechamada_apigateway.gateway.model.UsuarioAutenticado;
 import com.sistemadechamada_apigateway.gateway.security.JwtTokenProvider;
+import com.sistemadechamada_apigateway.gateway.service.UsuarioService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
@@ -13,29 +16,26 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class AuthController {
 
+    private final UsuarioService usuarioService;
     private final JwtTokenProvider jwtTokenProvider;
 
+    /** Login real (1.1): confere usuário e senha (BCrypt) na tabela usuarios. */
     @PostMapping("/login")
-    public Mono<ResponseEntity<LoginResponseDTO>> login(@RequestBody LoginRequestDTO request) {
-        String username = request.getUsername() != null ? request.getUsername().toLowerCase() : "aluno";
-        String role;
-        String userId;
+    public Mono<LoginResponseDTO> login(@Valid @RequestBody LoginRequestDTO request) {
+        return usuarioService.autenticar(request.getUsername(), request.getPassword())
+                .map(usuario -> new LoginResponseDTO(
+                        jwtTokenProvider.gerarToken(usuario),
+                        "Bearer",
+                        jwtTokenProvider.getExpirationInSeconds(),
+                        usuario.getId(),
+                        usuario.getUsername(),
+                        usuario.getRole().name(),
+                        usuario.getReferenciaId()));
+    }
 
-        // Regra de geração de tokens conforme o usuário fornecido
-        if (username.contains("admin")) {
-            role = "ADMIN";
-            userId = request.getUserId() != null ? request.getUserId() : "999";
-        } else if (username.contains("prof")) {
-            role = "PROFESSOR";
-            userId = request.getUserId() != null ? request.getUserId() : "105";
-        } else {
-            role = "ALUNO";
-            userId = request.getUserId() != null ? request.getUserId() : "65a1f2b3c4d5e6f7a8b9c0d1";
-        }
-
-        String token = jwtTokenProvider.gerarToken(userId, role, username);
-        LoginResponseDTO response = new LoginResponseDTO(token, "Bearer", userId, role);
-
-        return Mono.just(ResponseEntity.ok(response));
+    /** Dados do usuário logado (o front usa para decidir quais abas e botões mostrar). */
+    @GetMapping("/me")
+    public Mono<UsuarioAutenticado> me(@AuthenticationPrincipal UsuarioAutenticado usuario) {
+        return Mono.just(usuario);
     }
 }
