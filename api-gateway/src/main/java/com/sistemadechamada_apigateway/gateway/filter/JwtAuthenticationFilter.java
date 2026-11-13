@@ -1,8 +1,7 @@
 package com.sistemadechamada_apigateway.gateway.filter;
 
-
+import com.sistemadechamada_apigateway.gateway.model.UsuarioAutenticado;
 import com.sistemadechamada_apigateway.gateway.security.JwtTokenProvider;
-import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -13,6 +12,8 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+
+import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -40,15 +41,16 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
         String token = authHeader.substring(7);
 
-        // 3. Validação da assinatura e expiração do JWT
-        if (!jwtTokenProvider.validarToken(token)) {
+        // 3. Validação da assinatura, issuer, expiração e extração dos dados do usuário
+        Optional<UsuarioAutenticado> usuarioOpt = jwtTokenProvider.validar(token);
+        if (usuarioOpt.isEmpty()) {
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
         }
 
-        Claims claims = jwtTokenProvider.extrairClaims(token);
-        String role = claims.get("role", String.class);
-        String userId = claims.get("userId", String.class);
+        UsuarioAutenticado usuario = usuarioOpt.get();
+        String role = usuario.role().name();
+        String userId = String.valueOf(usuario.usuarioId());
 
         // 4. Matriz de Autorização (RBAC) por Perfil
 
