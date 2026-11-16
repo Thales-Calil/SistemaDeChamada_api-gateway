@@ -9,6 +9,13 @@ Comandos para atualizar e rodar após alterar:
 npm run build:remotes
 npm run start
 
+# Sistema de Chamadas - API Gateway / BFF
+
+Documentação de arquitetura (arc42): [docs/arc42.md](docs/arc42.md)
+
+Rotas: `/api/alunos/**` → aluno-service; `/api/turmas/**`, `/api/professores/**`, `/api/disciplinas/**`,
+`/api/chamadas/**` e `/api/presencas/**` → turma-service (o chamada-service foi incorporado a ele).
+
 ## API Gateway - configuração no Azure (App Service app-api-gateway-chamadas)
 
 Variáveis de ambiente obrigatórias (Configuração > Configurações do aplicativo):
@@ -20,7 +27,8 @@ Variáveis de ambiente obrigatórias (Configuração > Configurações do aplica
 | `GATEWAY_DB_PASSWORD` | senha do Azure SQL |
 | `JWT_SECRET` | texto aleatório com 32+ caracteres (o mesmo valor será usado pelos microsserviços) |
 | `ADMIN_INITIAL_PASSWORD` | senha do primeiro admin (8+ caracteres). Usada só se ainda não existir ADMIN |
-| `ALUNO_SERVICE_URL`, `CHAMADA_SERVICE_URL`, `TURMA_SERVICE_URL` | URLs dos microsserviços |
+| `ALUNO_SERVICE_URL`, `TURMA_SERVICE_URL` | URLs dos microsserviços (chamadas e presenças são atendidas pelo turma-service) |
+| `FRONTEND_URL` | URL do Static Web Apps (ex.: `https://<nome>.azurestaticapps.net`, sem barra no fim), liberada no CORS |
 
 Opcionais: `ADMIN_INITIAL_USERNAME` (padrão `admin`), `JWT_EXPIRATION_MS` (padrão 8h).
 

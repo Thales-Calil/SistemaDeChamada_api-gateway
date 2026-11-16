@@ -47,7 +47,8 @@ spring:
               - "http://127.0.0.1:5173"
               - "http://127.0.0.1:5174"
               # --- NUVEM (Host Azure Static Web Apps) ---
-              - "https://jolly-wave-02fe61f0f.5.azurestaticapps.net"
+              # FRONTEND_URL = URL do Static Web Apps da assinatura atual (sem barra no fim)
+              - "${FRONTEND_URL:https://jolly-wave-02fe61f0f.5.azurestaticapps.net}"
             allowed-methods:
               - GET
               - POST
@@ -62,7 +63,7 @@ spring:
 
       # Mapeamento de Rotas do Reverse Proxy
       routes:
-        # Rota 1: Aluno Service (MongoDB Atlas) -> :8081
+        # Rota 1: Aluno Service (Cosmos DB, API MongoDB) -> :8081
         - id: aluno-service-route
           uri: ${services.aluno.url:http://localhost:8081}
           predicates:
@@ -70,19 +71,20 @@ spring:
           filters:
             - AddResponseHeader=X-Gateway-Route, aluno-service
 
-        # Rota 2: Chamada Service (Azure SQL) -> :8082
-        - id: chamada-service-route
-          uri: ${services.chamada.url:http://localhost:8082}
-          predicates:
-            - Path=/api/chamadas/**, /api/presencas/**
-          filters:
-            - AddResponseHeader=X-Gateway-Route, chamada-service
-
-        # Rota 3: Turma Service (Azure SQL) -> :8083
+        # Rota 2: Turma Service (Azure SQL) -> :8083
+        # Turmas, professores, disciplinas e matrículas
         - id: turma-service-route
           uri: ${services.turma.url:http://localhost:8083}
           predicates:
             - Path=/api/turmas/**, /api/professores/**, /api/disciplinas/**
+          filters:
+            - AddResponseHeader=X-Gateway-Route, turma-service
+
+        # Rota 3: Chamadas e presenças -> também no Turma Service (o chamada-service foi incorporado a ele)
+        - id: turma-service-chamadas-route
+          uri: ${services.turma.url:http://localhost:8083}
+          predicates:
+            - Path=/api/chamadas/**, /api/presencas/**
           filters:
             - AddResponseHeader=X-Gateway-Route, turma-service
 
@@ -93,13 +95,6 @@ spring:
             - Path=/v3/api-docs/aluno-service
           filters:
             - RewritePath=/v3/api-docs/aluno-service, /v3/api-docs
-
-        - id: chamada-service-api-docs
-          uri: ${services.chamada.url:http://localhost:8082}
-          predicates:
-            - Path=/v3/api-docs/chamada-service
-          filters:
-            - RewritePath=/v3/api-docs/chamada-service, /v3/api-docs
 
         - id: turma-service-api-docs
           uri: ${services.turma.url:http://localhost:8083}
@@ -112,8 +107,6 @@ spring:
 services:
   aluno:
     url: ${ALUNO_SERVICE_URL:http://localhost:8081}
-  chamada:
-    url: ${CHAMADA_SERVICE_URL:http://localhost:8082}
   turma:
     url: ${TURMA_SERVICE_URL:http://localhost:8083}
 
@@ -128,9 +121,7 @@ springdoc:
     urls:
       - name: 1. Aluno Service
         url: /v3/api-docs/aluno-service
-      - name: 2. Chamada Service
-        url: /v3/api-docs/chamada-service
-      - name: 3. Turma Service
+      - name: 2. Turma Service (turmas, matrículas, chamadas e presenças)
         url: /v3/api-docs/turma-service
 
 # Segurança do JWT (1.2): o segredo vem SOMENTE da variável de ambiente JWT_SECRET
